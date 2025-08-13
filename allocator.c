@@ -43,3 +43,19 @@ int *allocate(int size) {
     uint8_t *user_mem = (uint8_t *)blk + HEADER_SIZE;
     return (int *)user_mem;
 }
+
+void deallocate(int *ptr) {
+    if (!ptr) return;
+
+    block_header_t *hdr = ptr_to_header((void *)ptr);
+    if (!hdr) {
+        return;
+    }
+
+    if (hdr->free) {
+        return;
+    }
+
+    hdr->free = TRUE;
+    coalesce_if_possible();
+}
