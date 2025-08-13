@@ -2,68 +2,43 @@
 #include <stdint.h>
 
 #define POOL_SIZE (100 * 1024)
+
 static uint8_t memory_pool[POOL_SIZE];
-typedef struct Block {
-    int size;               
-    int free;              
-    struct Block *next;    
-} Block;
+static uint8_t *next_free = memory_pool;
 
-static Block *free_list = NULL;
-
+// Initialize memory pool
 void init_memory() {
-    free_list = (Block*)memory_pool;
-    free_list->size = POOL_SIZE - sizeof(Block);
-    free_list->free = 1;
-    free_list->next = NULL;
+    next_free = memory_pool;
 }
 
 int* allocate(int size) {
     if (size <= 0) return NULL;
+    if (next_free + size > memory_pool + POOL_SIZE) return NULL; // out of memory
 
-    Block *curr = free_list;
-    while (curr) {
-        if (curr->free && curr->size >= size) {
-      
-            if (curr->size > size + sizeof(Block)) {
-                Block *new_block = (Block*)((uint8_t*)curr + sizeof(Block) + size);
-                new_block->size = curr->size - size - sizeof(Block);
-                new_block->free = 1;
-                new_block->next = curr->next;
-                curr->next = new_block;
-                curr->size = size;
-            }
-            curr->free = 0;
-            return (int*)((uint8_t*)curr + sizeof(Block));
-        }
-        curr = curr->next;
-    }
-    return NULL; 
+    int *ptr = (int*)next_free;
+    next_free += size; // move pointer forward
+    return ptr;
 }
 
 void deallocate(int *ptr) {
-    if (!ptr) return;
-    Block *block = (Block*)((uint8_t*)ptr - sizeof(Block));
-    block->free = 1;
-
-    if (block->next && block->next->free) {
-        block->size += sizeof(Block) + block->next->size;
-        block->next = block->next->next;
-    }
+    (void)ptr;
 }
 
 int main() {
     init_memory();
 
-    int *mem[100];
+    int *mem[3];
     mem[0] = allocate(128);
     mem[1] = allocate(1024);
-
-    deallocate(mem[1]);
-    mem[1] = allocate(512);
+    mem[2] = allocate(4096);
 
     printf("mem[0]: %p\n", mem[0]);
     printf("mem[1]: %p\n", mem[1]);
+    printf("mem[2]: %p\n", mem[2]);
 
+    deallocate(mem[1]); 
+    mem[1] = allocate(512); 
+
+    printf("mem[1] after free+alloc: %p\n", mem[1]);
     return 0;
 }
